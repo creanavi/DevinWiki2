@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>簡単な3Dグラフィックス - Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333;
+            background: rgba(255,255,255,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        #container {
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>簡単な3Dグラフィックス例</h3>
+        <p>回転する立方体とトーラス</p>
+        <p>マウスでドラッグして視点を変更できます</p>
+    </div>
+    
+    <div id="container"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./build/three.module.js",
+            "three/addons/": "./examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // シーン、カメラ、レンダラーの作成
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 800/600, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setSize(800, 600);
+        renderer.setClearColor(0x87CEEB); // 空色の背景
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        const container = document.getElementById('container');
+        container.appendChild(renderer.domElement);
+
+        // オービットコントロール（マウスで視点変更）
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // ライトの追加
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // 床の作成
+        const floorGeometry = new THREE.PlaneGeometry(20, 20);
+        const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // 立方体の作成
+        const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+        const cubeMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xff6b6b,
+            shininess: 100
+        });
+        const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cube.position.x = -3;
+        cube.castShadow = true;
+        cube.receiveShadow = true;
+        scene.add(cube);
+
+        // トーラス（ドーナツ型）の作成
+        const torusGeometry = new THREE.TorusGeometry(1.5, 0.5, 16, 100);
+        const torusMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x4ecdc4,
+            shininess: 100
+        });
+        const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+        torus.position.x = 3;
+        torus.castShadow = true;
+        torus.receiveShadow = true;
+        scene.add(torus);
+
+        // 球体の作成
+        const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const sphereMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xffe66d,
+            shininess: 100
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.y = 2;
+        sphere.castShadow = true;
+        sphere.receiveShadow = true;
+        scene.add(sphere);
+
+        // カメラの位置設定
+        camera.position.set(5, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        // アニメーション関数
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // オブジェクトの回転
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+
+            torus.rotation.x += 0.02;
+            torus.rotation.y += 0.01;
+
+            sphere.rotation.y += 0.015;
+
+            // コントロールの更新
+            controls.update();
+
+            // レンダリング
+            renderer.render(scene, camera);
+        }
+
+        // アニメーション開始
+        animate();
+
+        // ウィンドウリサイズ対応
+        window.addEventListener('resize', () => {
+            camera.aspect = 800 / 600;
+            camera.updateProjectionMatrix();
+            renderer.setSize(800, 600);
+        });
+    </script>
+</body>
+</html>
