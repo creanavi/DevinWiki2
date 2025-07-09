@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>フラクタルアート - Three.js</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #title {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        #title h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s ease-in-out infinite;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+
+        #title p {
+            font-size: 1rem;
+            margin-top: 10px;
+            color: #a0a0a0;
+            letter-spacing: 2px;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 200px;
+        }
+
+        .control-panel h3 {
+            color: #4ecdc4;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-group label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .fractal-info {
+            position: absolute;
+            top: 50%;
+            right: 30px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 300px;
+            pointer-events: auto;
+        }
+
+        .fractal-info h3 {
+            color: #45b7d1;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .fractal-info p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #ddd;
+            margin-bottom: 10px;
+        }
+
+        .glow-effect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(78, 205, 196, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.3;
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0.1;
+            }
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float 6s linear infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="ui-overlay">
+        <div class="glow-effect"></div>
+        
+        <div id="title">
+            <h1>FRACTAL UNIVERSE</h1>
+            <p>無限の美しさを探索する</p>
+        </div>
+
+        <div id="controls">
+            <div class="control-panel">
+                <h3>フラクタル制御</h3>
+                <div class="slider-group">
+                    <label>ズーム</label>
+                    <input type="range" class="slider" id="zoomSlider" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+                <div class="slider-group">
+                    <label>複素数 C (実部)</label>
+                    <input type="range" class="slider" id="cRealSlider" min="-2.0" max="2.0" step="0.01" value="-0.7">
+                </div>
+                <div class="slider-group">
+                    <label>複素数 C (虚部)</label>
+                    <input type="range" class="slider" id="cImagSlider" min="-2.0" max="2.0" step="0.01" value="0.27015">
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>視覚効果</h3>
+                <div class="slider-group">
+                    <label>色相シフト</label>
+                    <input type="range" class="slider" id="hueSlider" min="0" max="360" step="1" value="180">
+                </div>
+                <div class="slider-group">
+                    <label>彩度</label>
+                    <input type="range" class="slider" id="saturationSlider" min="0.0" max="2.0" step="0.1" value="1.0">
+                </div>
+                <div class="slider-group">
+                    <label>明度</label>
+                    <input type="range" class="slider" id="brightnessSlider" min="0.0" max="2.0" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <div class="fractal-info">
+            <h3>ジュリア集合</h3>
+            <p>複素数平面上で z² + c の反復により生成される美しいフラクタルパターン</p>
+            <p>スライダーで複素数パラメータを調整し、無限の変化を楽しんでください</p>
+            <p>マウスで視点を回転、ホイールでズーム可能</p>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./build/three.module.js",
+            "three/addons/": "./examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // パーティクル生成
+        function createParticles() {
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + 'vw';
+                    particle.style.animationDelay = Math.random() * 6 + 's';
+                    particle.style.animationDuration = (6 + Math.random() * 4) + 's';
+                    document.body.appendChild(particle);
+                    
+                    setTimeout(() => {
+                        particle.remove();
+                    }, 10000);
+                }, i * 300);
+            }
+        }
+
+        setInterval(createParticles, 3000);
+        createParticles();
+
+        // Three.js セットアップ
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // オービットコントロール
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // フラクタルシェーダー
+        const fractalVertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fractalFragmentShader = `
+            uniform float time;
+            uniform vec2 resolution;
+            uniform float zoom;
+            uniform vec2 c;
+            uniform float hue;
+            uniform float saturation;
+            uniform float brightness;
+            varying vec2 vUv;
+
+            vec3 hsv2rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
+
+            void main() {
+                vec2 uv = (vUv - 0.5) * 4.0 / zoom;
+                
+                vec2 z = uv;
+                float iterations = 0.0;
+                const float maxIterations = 100.0;
+                
+                for (float i = 0.0; i < maxIterations; i++) {
+                    if (length(z) > 2.0) break;
+                    
+                    // Julia set: z = z² + c
+                    z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+                    iterations++;
+                }
+                
+                float colorValue = iterations / maxIterations;
+                
+                if (iterations >= maxIterations - 1.0) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                } else {
+                    float smoothColor = colorValue + 1.0 - log2(log2(length(z)));
+                    smoothColor = smoothColor / maxIterations;
+                    
+                    vec3 color1 = hsv2rgb(vec3(hue / 360.0, saturation, brightness));
+                    vec3 color2 = hsv2rgb(vec3((hue + 60.0) / 360.0, saturation, brightness * 0.8));
+                    vec3 color3 = hsv2rgb(vec3((hue + 120.0) / 360.0, saturation, brightness * 0.6));
+                    
+                    vec3 finalColor = mix(color1, color2, sin(smoothColor * 10.0) * 0.5 + 0.5);
+                    finalColor = mix(finalColor, color3, cos(smoothColor * 15.0) * 0.3 + 0.3);
+                    
+                    gl_FragColor = vec4(finalColor, 1.0);
+                }
+            }
+        `;
+
+        // フラクタル平面の作成
+        const fractalGeometry = new THREE.PlaneGeometry(10, 10, 100, 100);
+        const fractalMaterial = new THREE.ShaderMaterial({
+            vertexShader: fractalVertexShader,
+            fragmentShader: fractalFragmentShader,
+            uniforms: {
+                time: { value: 0.0 },
+                resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                zoom: { value: 1.0 },
+                c: { value: new THREE.Vector2(-0.7, 0.27015) },
+                hue: { value: 180.0 },
+                saturation: { value: 1.0 },
+                brightness: { value: 1.0 }
+            }
+        });
+
+        const fractalMesh = new THREE.Mesh(fractalGeometry, fractalMaterial);
+        scene.add(fractalMesh);
+
+        // 3Dフラクタル構造体
+        const createFractalSphere = () => {
+            const sphereGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const sphereMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x4ecdc4,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            const group = new THREE.Group();
+            
+            function addSphere(pos, scale, depth) {
+                if (depth <= 0) return;
+                
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.copy(pos);
+                sphere.scale.setScalar(scale);
+                group.add(sphere);
+                
+                const branches = 4;
+                for (let i = 0; i < branches; i++) {
+                    const angle = (i / branches) * Math.PI * 2;
+                    const newPos = pos.clone();
+                    newPos.x += Math.cos(angle) * scale * 2;
+                    newPos.y += Math.sin(angle) * scale * 2;
+                    newPos.z += (Math.random() - 0.5) * scale;
+                    
+                    addSphere(newPos, scale * 0.7, depth - 1);
+                }
+            }
+            
+            addSphere(new THREE.Vector3(0, 0, 0), 1, 4);
+            return group;
+        };
+
+        const fractalSphere = createFractalSphere();
+        fractalSphere.position.z = -5;
+        scene.add(fractalSphere);
+
+        // UI コントロール
+        const zoomSlider = document.getElementById('zoomSlider');
+        const cRealSlider = document.getElementById('cRealSlider');
+        const cImagSlider = document.getElementById('cImagSlider');
+        const hueSlider = document.getElementById('hueSlider');
+        const saturationSlider = document.getElementById('saturationSlider');
+        const brightnessSlider = document.getElementById('brightnessSlider');
+
+        zoomSlider.addEventListener('input', (e) => {
+            fractalMaterial.uniforms.zoom.value = parseFloat(e.target.value);
+        });
+
+        cRealSlider.addEventListener('input', (e) => {
+            fractalMaterial.uniforms.c.value.x = parseFloat(e.target.value);
+        });
+
+        cImagSlider.addEventListener('input', (e) => {
+            fractalMaterial.uniforms.c.value.y = parseFloat(e.target.value);
+        });
+
+        hueSlider.addEventListener('input', (e) => {
+            fractalMaterial.uniforms.hue.value = parseFloat(e.target.value);
+        });
+
+        saturationSlider.addEventListener('input', (e) => {
+            fractalMaterial.uniforms.saturation.value = parseFloat(e.target.value);
+        });
+
+        brightnessSlider.addEventListener('input', (e) => {
+            fractalMaterial.uniforms.brightness.value = parseFloat(e.target.value);
+        });
+
+        // カメラ位置
+        camera.position.z = 5;
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+
+            fractalMaterial.uniforms.time.value += 0.01;
+            
+            fractalSphere.rotation.x += 0.005;
+            fractalSphere.rotation.y += 0.01;
+            fractalSphere.rotation.z += 0.007;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // リサイズ対応
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            fractalMaterial.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
